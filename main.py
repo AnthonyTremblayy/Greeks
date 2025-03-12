@@ -28,7 +28,7 @@ class OptionGreeks:
             raise ValueError("r must be either a constant or a yield curve (dict)")
         
         if vol_surface is not None:
-            self.vol_surface = self._interpolate_vol_surface_along_ttm(self.T, vol_surface) / 100
+            self.vol_array = self._interpolate_vol_surface_along_ttm(self.T, vol_surface) / 100
         
     def _interpolate_yield_curve(self, time, yield_curve):
         """
@@ -52,18 +52,18 @@ class OptionGreeks:
         """
         
         ttm = vol_surface["ttm"]
-        vol_surface = vol_surface["vol"]
-        vol_interp = interp1d(ttm, vol_surface, kind='cubic', axis=0)
+        vol = vol_surface["vol"]
+        vol_interp = interp1d(ttm, vol, kind='cubic', axis=0)
 
         return vol_interp(T)
     
-    def _interpolate_vol_surface_along_moneyness(self, K):
+    def _interpolate_vol_surface_along_moneyness(self, K, vol_surface):
         """
         Interpolates the volatility surface for a given moneyness.
         """
         moneyness = vol_surface["moneyness"]
-        vol_interp = interp1d(moneyness, self.vol_surface, kind='cubic')
-        
+        vol_interp = interp1d(moneyness, self.vol_array, kind='cubic')
+
         return vol_interp(K / self.S * 100)
     
     def plot_volatility_smile(self, atm_vol=0.25, curvature=1.5, skew=0.35):
@@ -124,7 +124,7 @@ class OptionGreeks:
 
                     elif variable == 'ttm':
                         if self.vol_surface is not None:
-                            sigma = self._interpolate_vol_surface_along_moneyness(K)
+                            sigma = self._interpolate_vol_surface_along_moneyness(K, vol_surface=self.vol_surface)
                         else:
                             sigma = OptionGreeks.volatility_smile(self.S, K) #Proxy
                             
@@ -270,6 +270,7 @@ if __name__ == "__main__":
         9 / 12: 4.030, 
         12 / 12: 3.931
     }
+
     # Call option with volatility varying
     option_call_vol = OptionGreeks(S, yield_curve, T, option_type='call')
     option_call_vol.plot_greeks(variable='vol')
@@ -281,6 +282,7 @@ if __name__ == "__main__":
     # Put option with volatility varying
     option_put_vol = OptionGreeks(S, yield_curve, T, option_type='put')
     option_put_vol.plot_greeks(variable='vol')
+
     # Put option with time to expiry varying
     option_put_time = OptionGreeks(S, yield_curve, T, option_type='put', vol_surface=vol_surface)
     option_put_time.plot_greeks(variable='ttm')
